@@ -1,0 +1,34 @@
+# Python
+fastapi/__pycache__/
+fastapi/.env
+fastapi/venv/
+fastapi/.pytest_cache/
+fastapi/*.egg-info/
+
+# Node.js
+nextjs/node_modules/
+nextjs/.next/
+nextjs/dist/
+nextjs/.env.local
+nextjs/.env.development.local
+nextjs/.env.test.local
+nextjs/.env.production.local
+
+# Database
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
