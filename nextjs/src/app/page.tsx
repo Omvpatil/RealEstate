@@ -53,7 +53,7 @@ export default function LandingPage() {
             The complete platform to build the future.
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto text-pretty">
-            Your team's toolkit to stop configuring and start innovating.
+            Your team&apos;s toolkit to stop configuring and start innovating.
             Securely build, deploy, and scale the best construction experiences
             with BuildCraft.
           </p>

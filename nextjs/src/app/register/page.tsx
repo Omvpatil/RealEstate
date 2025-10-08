@@ -1,20 +1,27 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building2, User } from "lucide-react"
-import Link from "next/link"
+import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Building2, User } from "lucide-react";
+import Link from "next/link";
 
 export default function RegisterPage() {
-  const searchParams = useSearchParams()
-  const defaultTab = searchParams.get("type") === "customer" ? "customer" : "builder"
+  const searchParams = useSearchParams();
+  const defaultTab =
+    searchParams.get("type") === "customer" ? "customer" : "builder";
 
   const [builderData, setBuilderData] = useState({
     companyName: "",
@@ -24,7 +31,7 @@ export default function RegisterPage() {
     licenseNumber: "",
     phone: "",
     address: "",
-  })
+  });
 
   const [customerData, setCustomerData] = useState({
     firstName: "",
@@ -33,30 +40,36 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
     phone: "",
-  })
+  });
 
   const handleBuilderRegister = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     // TODO: Implement builder registration
-    console.log("Builder registration:", builderData)
-  }
+    console.log("Builder registration:", builderData);
+  };
 
   const handleCustomerRegister = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     // TODO: Implement customer registration
-    console.log("Customer registration:", customerData)
-  }
-
+    console.log("Customer registration:", customerData);
+  };
+  //
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
             <Building2 className="h-8 w-8 text-accent" />
-            <span className="text-2xl font-bold text-foreground">BuildCraft</span>
+            <span className="text-2xl font-bold text-foreground">
+              BuildCraft
+            </span>
           </Link>
-          <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
-          <p className="text-muted-foreground">Join the future of construction</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            Create your account
+          </h1>
+          <p className="text-muted-foreground">
+            Join the future of construction
+          </p>
         </div>
 
         <Tabs defaultValue={defaultTab} className="w-full">
@@ -75,7 +88,9 @@ export default function RegisterPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Builder Registration</CardTitle>
-                <CardDescription>Create your builder account to manage construction projects</CardDescription>
+                <CardDescription>
+                  Create your builder account to manage construction projects
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleBuilderRegister} className="space-y-4">
@@ -85,7 +100,12 @@ export default function RegisterPage() {
                       id="company-name"
                       placeholder="Your Construction Company"
                       value={builderData.companyName}
-                      onChange={(e) => setBuilderData({ ...builderData, companyName: e.target.value })}
+                      onChange={(e) =>
+                        setBuilderData({
+                          ...builderData,
+                          companyName: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -95,7 +115,12 @@ export default function RegisterPage() {
                       id="license-number"
                       placeholder="Construction License #"
                       value={builderData.licenseNumber}
-                      onChange={(e) => setBuilderData({ ...builderData, licenseNumber: e.target.value })}
+                      onChange={(e) =>
+                        setBuilderData({
+                          ...builderData,
+                          licenseNumber: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -106,7 +131,12 @@ export default function RegisterPage() {
                       type="email"
                       placeholder="builder@company.com"
                       value={builderData.email}
-                      onChange={(e) => setBuilderData({ ...builderData, email: e.target.value })}
+                      onChange={(e) =>
+                        setBuilderData({
+                          ...builderData,
+                          email: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -117,7 +147,12 @@ export default function RegisterPage() {
                       type="tel"
                       placeholder="+1 (555) 123-4567"
                       value={builderData.phone}
-                      onChange={(e) => setBuilderData({ ...builderData, phone: e.target.value })}
+                      onChange={(e) =>
+                        setBuilderData({
+                          ...builderData,
+                          phone: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -127,17 +162,29 @@ export default function RegisterPage() {
                       id="builder-password"
                       type="password"
                       value={builderData.password}
-                      onChange={(e) => setBuilderData({ ...builderData, password: e.target.value })}
+                      onChange={(e) =>
+                        setBuilderData({
+                          ...builderData,
+                          password: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="builder-confirm-password">Confirm Password</Label>
+                    <Label htmlFor="builder-confirm-password">
+                      Confirm Password
+                    </Label>
                     <Input
                       id="builder-confirm-password"
                       type="password"
                       value={builderData.confirmPassword}
-                      onChange={(e) => setBuilderData({ ...builderData, confirmPassword: e.target.value })}
+                      onChange={(e) =>
+                        setBuilderData({
+                          ...builderData,
+                          confirmPassword: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -153,7 +200,9 @@ export default function RegisterPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Customer Registration</CardTitle>
-                <CardDescription>Create your account to browse and book construction projects</CardDescription>
+                <CardDescription>
+                  Create your account to browse and book construction projects
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCustomerRegister} className="space-y-4">
@@ -164,7 +213,12 @@ export default function RegisterPage() {
                         id="first-name"
                         placeholder="John"
                         value={customerData.firstName}
-                        onChange={(e) => setCustomerData({ ...customerData, firstName: e.target.value })}
+                        onChange={(e) =>
+                          setCustomerData({
+                            ...customerData,
+                            firstName: e.target.value,
+                          })
+                        }
                         required
                       />
                     </div>
@@ -174,7 +228,12 @@ export default function RegisterPage() {
                         id="last-name"
                         placeholder="Doe"
                         value={customerData.lastName}
-                        onChange={(e) => setCustomerData({ ...customerData, lastName: e.target.value })}
+                        onChange={(e) =>
+                          setCustomerData({
+                            ...customerData,
+                            lastName: e.target.value,
+                          })
+                        }
                         required
                       />
                     </div>
@@ -186,7 +245,12 @@ export default function RegisterPage() {
                       type="email"
                       placeholder="customer@email.com"
                       value={customerData.email}
-                      onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          email: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -197,7 +261,12 @@ export default function RegisterPage() {
                       type="tel"
                       placeholder="+1 (555) 123-4567"
                       value={customerData.phone}
-                      onChange={(e) => setCustomerData({ ...customerData, phone: e.target.value })}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          phone: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -207,17 +276,29 @@ export default function RegisterPage() {
                       id="customer-password"
                       type="password"
                       value={customerData.password}
-                      onChange={(e) => setCustomerData({ ...customerData, password: e.target.value })}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          password: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="customer-confirm-password">Confirm Password</Label>
+                    <Label htmlFor="customer-confirm-password">
+                      Confirm Password
+                    </Label>
                     <Input
                       id="customer-confirm-password"
                       type="password"
                       value={customerData.confirmPassword}
-                      onChange={(e) => setCustomerData({ ...customerData, confirmPassword: e.target.value })}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          confirmPassword: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -240,5 +321,5 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

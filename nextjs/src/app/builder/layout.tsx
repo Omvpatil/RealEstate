@@ -1,10 +1,10 @@
-import type React from "react"
-import { BuilderSidebar } from "@/components/builder/sidebar"
+import type React from "react";
+import { BuilderSidebar } from "@/components/builder/sidebar";
 
 export default function BuilderLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <div className="flex h-screen bg-background">
@@ -13,5 +13,5 @@ export default function BuilderLayout({
         <div className="container mx-auto p-6">{children}</div>
       </main>
     </div>
-  )
+  );
 }
