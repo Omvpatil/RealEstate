@@ -22,7 +22,11 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { checkUserSession, handleApiError } from "@/lib/auth-utils";
+import { bookingsService } from "@/lib/services/bookings.service";
 import {
     Building2,
     CheckCircle,
@@ -38,121 +42,85 @@ import {
     User,
     XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function BookingsPage() {
+    const router = useRouter();
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [projectFilter, setProjectFilter] = useState("all");
+    const [bookings, setBookings] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        total: 0,
+        active: 0,
+        completed: 0,
+        cancelled: 0,
+        totalRevenue: 0,
+        pendingRevenue: 0,
+    });
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
 
-    // Mock data - replace with real API calls
-    const bookings = [
-        {
-            id: 1,
-            bookingNumber: "BK-001",
-            customer: "John Smith",
-            customerId: 101,
-            customerEmail: "john@example.com",
-            customerPhone: "+1-234-567-8901",
-            project: "Sunset Residences",
-            projectId: 1,
-            unit: "A-204",
-            unitId: 204,
-            unitType: "2 BHK",
-            totalAmount: 7500000,
-            tokenAmount: 500000,
-            paidAmount: 2000000,
-            pendingAmount: 5500000,
-            paymentPlan: "Installments",
-            bookingDate: "2024-09-15",
-            status: "Active",
-            paymentProgress: 26.67,
-        },
-        {
-            id: 2,
-            bookingNumber: "BK-002",
-            customer: "Sarah Johnson",
-            customerId: 102,
-            customerEmail: "sarah@example.com",
-            customerPhone: "+1-234-567-8902",
-            project: "Green Valley Homes",
-            projectId: 2,
-            unit: "B-105",
-            unitId: 105,
-            unitType: "3 BHK",
-            totalAmount: 9500000,
-            tokenAmount: 750000,
-            paidAmount: 750000,
-            pendingAmount: 8750000,
-            paymentPlan: "Construction Linked",
-            bookingDate: "2024-09-20",
-            status: "Active",
-            paymentProgress: 7.89,
-        },
-        {
-            id: 3,
-            bookingNumber: "BK-003",
-            customer: "Mike Davis",
-            customerId: 103,
-            customerEmail: "mike@example.com",
-            customerPhone: "+1-234-567-8903",
-            project: "Urban Towers",
-            projectId: 3,
-            unit: "C-301",
-            unitId: 301,
-            unitType: "2 BHK",
-            totalAmount: 8200000,
-            tokenAmount: 500000,
-            paidAmount: 8200000,
-            pendingAmount: 0,
-            paymentPlan: "One-Time",
-            bookingDate: "2024-08-10",
-            status: "Completed",
-            paymentProgress: 100,
-        },
-        {
-            id: 4,
-            bookingNumber: "BK-004",
-            customer: "Emily Brown",
-            customerId: 104,
-            customerEmail: "emily@example.com",
-            customerPhone: "+1-234-567-8904",
-            project: "Sunset Residences",
-            projectId: 1,
-            unit: "A-507",
-            unitId: 507,
-            unitType: "3 BHK",
-            totalAmount: 10500000,
-            tokenAmount: 800000,
-            paidAmount: 3500000,
-            pendingAmount: 7000000,
-            paymentPlan: "Installments",
-            bookingDate: "2024-09-25",
-            status: "Active",
-            paymentProgress: 33.33,
-        },
-        {
-            id: 5,
-            bookingNumber: "BK-005",
-            customer: "Robert Wilson",
-            customerId: 105,
-            customerEmail: "robert@example.com",
-            customerPhone: "+1-234-567-8905",
-            project: "Green Valley Homes",
-            projectId: 2,
-            unit: "B-208",
-            unitId: 208,
-            unitType: "2 BHK",
-            totalAmount: 7800000,
-            tokenAmount: 500000,
-            paidAmount: 500000,
-            pendingAmount: 0,
-            paymentPlan: "Installments",
-            bookingDate: "2024-09-05",
-            status: "Cancelled",
-            paymentProgress: 6.41,
-        },
-    ];
+    useEffect(() => {
+        const user = checkUserSession(router);
+        if (!user) return;
+        if (user.user_type !== "builder") {
+            router.push("/login");
+            return;
+        }
+
+        fetchBookings();
+    }, [page, statusFilter, projectFilter]);
+
+    const fetchBookings = async () => {
+        setLoading(true);
+        try {
+            const params: any = {
+                page,
+                limit: 10,
+            };
+
+            if (statusFilter && statusFilter !== "all") {
+                params.status = statusFilter;
+            }
+            if (projectFilter && projectFilter !== "all") {
+                params.project_id = Number(projectFilter);
+            }
+
+            const response = await bookingsService.getBuilderBookings(params);
+
+            if (response.error) {
+                handleApiError(response.error, router, toast);
+                return;
+            }
+
+            if (response.data) {
+                setBookings(response.data.bookings || []);
+                setTotal(response.data.total || 0);
+                if (response.data.stats) {
+                    setStats({
+                        total: response.data.stats.total_bookings || 0,
+                        active: response.data.stats.active_bookings || 0,
+                        completed: response.data.stats.completed_bookings || 0,
+                        cancelled: 0,
+                        totalRevenue: response.data.stats.total_revenue || 0,
+                        pendingRevenue: response.data.stats.pending_revenue || 0,
+                    });
+                }
+            }
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to load bookings",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -192,25 +160,20 @@ export default function BookingsPage() {
         }).format(amount);
     };
 
-    const filteredBookings = bookings.filter(booking => {
-        const matchesSearch =
-            booking.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            booking.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            booking.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            booking.unit.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === "all" || booking.status.toLowerCase() === statusFilter;
-        const matchesProject = projectFilter === "all" || booking.projectId.toString() === projectFilter;
-        return matchesSearch && matchesStatus && matchesProject;
-    });
-
-    // Calculate stats
-    const stats = {
-        total: bookings.length,
-        active: bookings.filter(b => b.status === "Active").length,
-        completed: bookings.filter(b => b.status === "Completed").length,
-        totalRevenue: bookings.reduce((sum, b) => sum + b.paidAmount, 0),
-        pendingRevenue: bookings.reduce((sum, b) => sum + b.pendingAmount, 0),
-    };
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <Skeleton className="h-32 w-full" />
+                <div className="grid gap-6 md:grid-cols-4">
+                    <Skeleton className="h-24" />
+                    <Skeleton className="h-24" />
+                    <Skeleton className="h-24" />
+                    <Skeleton className="h-24" />
+                </div>
+                <Skeleton className="h-96 w-full" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -393,7 +356,7 @@ export default function BookingsPage() {
                 <CardHeader>
                     <CardTitle>All Bookings</CardTitle>
                     <CardDescription>
-                        {filteredBookings.length} booking{filteredBookings.length !== 1 ? "s" : ""} found
+                        {bookings.length} booking{bookings.length !== 1 ? "s" : ""} found
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -411,7 +374,7 @@ export default function BookingsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredBookings.map(booking => (
+                            {bookings.map(booking => (
                                 <TableRow key={booking.id}>
                                     <TableCell>
                                         <div>

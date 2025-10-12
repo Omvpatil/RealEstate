@@ -1,13 +1,24 @@
 # RealEstate - Full-Stack Property Management Platform
+
 <div align="center">
   Real estate with 3D visualization, real-time progress tracking, and seamless builder-customer collaboration.
-</div> 
+</div>
 
 ---
 
 🏗️ About The Project
 
 RealEstate is a comprehensive property management platform that bridges the gap between builders and customers through innovative technology. Built with modern web technologies, it offers real-time construction progress tracking, immersive 3D property visualization, and streamlined appointment management.
+
+## 📚 Documentation
+
+-   **[Authentication Guide](./AUTH_IMPLEMENTATION.md)** - Complete authentication implementation guide
+-   **[Quick Reference](./AUTH_QUICK_REFERENCE.md)** - Authentication quick reference for developers
+-   **[Session Summary](./SESSION_MANAGEMENT_SUMMARY.md)** - Session management implementation summary
+-   **[API Integration Status](./API_INTEGRATION_STATUS.md)** - Current API integration progress
+-   **[Database Schema](./DATABASE_SCHEMA.md)** - Database structure documentation
+-   **[Changelog](./CHANGELOG.md)** - Version history and bug fixes
+
 ✨ Key Features
 
     🏠 Builder Dashboard: Complete project management, booking approvals, and customer interactions
@@ -16,7 +27,7 @@ RealEstate is a comprehensive property management platform that bridges the gap 
 
     📱 Responsive Design: Seamless experience across desktop, tablet, and mobile devices
 
-    🔒 Secure Authentication: JWT-based authentication with role-based access control
+    🔒 Secure Authentication: JWT-based authentication with role-based access control and automatic session management
 
     📊 Real-time Updates: Live construction progress tracking with photo documentation
 
@@ -62,7 +73,6 @@ Frontend Technologies
     Framer Motion - Animation library
 
 ---
-
 
 💡 Features Overview
 🏢 For Builders

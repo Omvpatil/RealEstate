@@ -1,385 +1,273 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { MapPin, Edit, Save, Plus, Eye, Bed, Bath, Square } from "lucide-react"
-import Link from "next/link"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { checkUserSession, handleApiError } from "@/lib/auth-utils";
+import { projectsService } from "@/lib/services/projects.service";
+import { ArrowLeft, Calendar, Edit, MapPin } from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
-  const [isEditing, setIsEditing] = useState(false)
+export default function ProjectDetailsPage() {
+    const params = useParams();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [project, setProject] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
 
-  // Mock data - replace with real API calls
-  const project = {
-    id: Number.parseInt(params.id),
-    name: "Sunset Residences",
-    description:
-      "A modern residential complex featuring luxury apartments with stunning city views and premium amenities.",
-    location: "Downtown District",
-    address: "123 Sunset Boulevard, Downtown, City 12345",
-    status: "In Progress",
-    progress: 75,
-    totalUnits: 24,
-    bookedUnits: 18,
-    availableUnits: 6,
-    startDate: "2024-01-15",
-    expectedCompletion: "2024-12-30",
-    budget: "$2.4M",
-    spent: "$1.8M",
-    bookings: 8,
-    developer: "BuildCraft Construction",
-    architect: "Modern Design Studio",
-    contractor: "Elite Builders Inc.",
-  }
+    useEffect(() => {
+        const user = checkUserSession(router);
+        if (!user) return;
+        if (user.user_type !== "builder") {
+            router.push("/login");
+            return;
+        }
 
-  const units = [
-    {
-      id: 1,
-      unitNumber: "A101",
-      floor: 1,
-      type: "1 Bedroom",
-      bedrooms: 1,
-      bathrooms: 1,
-      area: 650,
-      price: "$85,000",
-      status: "Available",
-      floorPlan: "/floor-plan-1-bedroom.jpg",
-    },
-    {
-      id: 2,
-      unitNumber: "A102",
-      floor: 1,
-      type: "2 Bedroom",
-      bedrooms: 2,
-      bathrooms: 2,
-      area: 950,
-      price: "$125,000",
-      status: "Booked",
-      floorPlan: "/2-bedroom-floor-plan.png",
-    },
-    {
-      id: 3,
-      unitNumber: "A201",
-      floor: 2,
-      type: "1 Bedroom",
-      bedrooms: 1,
-      bathrooms: 1,
-      area: 650,
-      price: "$87,000",
-      status: "Available",
-      floorPlan: "/floor-plan-1-bedroom.jpg",
-    },
-    {
-      id: 4,
-      unitNumber: "A202",
-      floor: 2,
-      type: "3 Bedroom",
-      bedrooms: 3,
-      bathrooms: 2,
-      area: 1200,
-      price: "$165,000",
-      status: "Reserved",
-      floorPlan: "/3-bedroom-floor-plan.png",
-    },
-  ]
+        fetchProjectDetails();
+    }, [params.id]);
 
-  const amenities = [
-    "Swimming Pool",
-    "Fitness Center",
-    "Rooftop Garden",
-    "Parking Garage",
-    "24/7 Security",
-    "Concierge Service",
-    "Children's Playground",
-    "Business Center",
-  ]
+    const fetchProjectDetails = async () => {
+        setLoading(true);
+        try {
+            const response = await projectsService.getProject(Number(params.id));
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Available":
-        return "outline"
-      case "Booked":
-        return "default"
-      case "Reserved":
-        return "secondary"
-      default:
-        return "secondary"
-    }
-  }
+            if (response.error) {
+                handleApiError(response.error, router, toast);
+                return;
+            }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Link href="/builder/projects" className="text-muted-foreground hover:text-foreground">
-              Projects
-            </Link>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-foreground">{project.name}</span>
-          </div>
-          <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-          <div className="flex items-center gap-4 mt-2">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <MapPin className="h-4 w-4" />
-              {project.location}
+            if (response.data) {
+                setProject(response.data);
+            }
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to load project details",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getStatusColor = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+        const colors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+            PLANNING: "secondary",
+            ONGOING: "default",
+            COMPLETED: "outline",
+            ON_HOLD: "destructive",
+        };
+        return colors[status] || "default";
+    };
+
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-10" />
+                    <Skeleton className="h-8 w-64" />
+                </div>
+                <div className="grid gap-6 md:grid-cols-2">
+                    <Skeleton className="h-64" />
+                    <Skeleton className="h-64" />
+                </div>
             </div>
-            <Badge variant={project.status === "In Progress" ? "default" : "secondary"}>{project.status}</Badge>
-          </div>
+        );
+    }
+
+    if (!project) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                    <Link href="/builder/projects">
+                        <Button variant="ghost" size="icon">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                    </Link>
+                    <h1 className="text-3xl font-bold">Project Not Found</h1>
+                </div>
+                <Card>
+                    <CardContent className="pt-6">
+                        <p className="text-muted-foreground">The requested project could not be found.</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Link href="/builder/projects">
+                        <Button variant="ghost" size="icon">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                    </Link>
+                    <div>
+                        <h1 className="text-3xl font-bold">{project.project_name}</h1>
+                        <p className="text-muted-foreground">Project Details</p>
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <Link href={`/builder/projects/${project.id}/edit`}>
+                        <Button variant="outline">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Project
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+
+            {/* Project Overview */}
+            <div className="grid gap-6 md:grid-cols-3">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium">Project Status</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Badge variant={getStatusColor(project.status)} className="text-lg px-4 py-1">
+                            {project.status}
+                        </Badge>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium">Total Units</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{project.total_units}</div>
+                        <p className="text-xs text-muted-foreground">{project.available_units} available</p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium">Project Area</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">
+                            {project.project_area ? `${project.project_area} sq ft` : "N/A"}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Project Information */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Project Information</CardTitle>
+                    <CardDescription>Basic details about the project</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Project Type</h3>
+                            <p className="font-medium">{project.project_type}</p>
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
+                            <p className="font-medium">{project.description || "No description provided"}</p>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-3">Location</h3>
+                        <div className="space-y-2">
+                            <div className="flex items-start gap-2">
+                                <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                <div>
+                                    <p className="font-medium">{project.location_address || "Address not provided"}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {project.location_city}, {project.location_state} - {project.location_zipcode}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Start Date</h3>
+                            <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <p className="font-medium">
+                                    {project.start_date ? new Date(project.start_date).toLocaleDateString() : "Not set"}
+                                </p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Expected Completion</h3>
+                            <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <p className="font-medium">
+                                    {project.expected_completion_date
+                                        ? new Date(project.expected_completion_date).toLocaleDateString()
+                                        : "Not set"}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Pricing Information */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Pricing Information</CardTitle>
+                    <CardDescription>Price range and financial details</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Minimum Price</h3>
+                            <p className="text-2xl font-bold">
+                                {project.price_range_min
+                                    ? `₹${Number(project.price_range_min).toLocaleString()}`
+                                    : "N/A"}
+                            </p>
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Maximum Price</h3>
+                            <p className="text-2xl font-bold">
+                                {project.price_range_max
+                                    ? `₹${Number(project.price_range_max).toLocaleString()}`
+                                    : "N/A"}
+                            </p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Amenities */}
+            {project.amenities && project.amenities.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Amenities</CardTitle>
+                        <CardDescription>Available facilities and features</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                            {project.amenities.map((amenity: string, index: number) => (
+                                <Badge key={index} variant="secondary">
+                                    {amenity}
+                                </Badge>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
-            <Edit className="h-4 w-4 mr-2" />
-            {isEditing ? "Cancel" : "Edit"}
-          </Button>
-          {isEditing && (
-            <Button>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Project Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold mb-2">{project.progress}%</div>
-            <Progress value={project.progress} className="h-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Units</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold mb-1">{project.totalUnits}</div>
-            <p className="text-xs text-muted-foreground">{project.availableUnits} available</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Budget</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold mb-1">{project.budget}</div>
-            <p className="text-xs text-muted-foreground">{project.spent} spent</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Bookings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold mb-1">{project.bookings}</div>
-            <p className="text-xs text-muted-foreground">pending approval</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabbed Content */}
-      <Tabs defaultValue="details" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="details">Project Details</TabsTrigger>
-          <TabsTrigger value="units">Units & Floor Plans</TabsTrigger>
-          <TabsTrigger value="pricing">Pricing</TabsTrigger>
-          <TabsTrigger value="amenities">Amenities</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="details" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Information</CardTitle>
-              <CardDescription>Basic details about the construction project</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="project-name">Project Name</Label>
-                  <Input id="project-name" value={project.name} disabled={!isEditing} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input id="location" value={project.location} disabled={!isEditing} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="start-date">Start Date</Label>
-                  <Input id="start-date" type="date" value={project.startDate} disabled={!isEditing} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="completion-date">Expected Completion</Label>
-                  <Input id="completion-date" type="date" value={project.expectedCompletion} disabled={!isEditing} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea id="description" value={project.description} disabled={!isEditing} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Full Address</Label>
-                <Input id="address" value={project.address} disabled={!isEditing} />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="units" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Units & Floor Plans</CardTitle>
-                <CardDescription>Manage individual units and their specifications</CardDescription>
-              </div>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Unit
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Unit</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Specifications</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Floor Plan</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {units.map((unit) => (
-                      <TableRow key={unit.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{unit.unitNumber}</div>
-                            <div className="text-sm text-muted-foreground">Floor {unit.floor}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{unit.type}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <Bed className="h-3 w-3" />
-                              {unit.bedrooms}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Bath className="h-3 w-3" />
-                              {unit.bathrooms}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Square className="h-3 w-3" />
-                              {unit.area} sq ft
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-medium">{unit.price}</span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusColor(unit.status)}>{unit.status}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Plan
-                          </Button>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="pricing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pricing Configuration</CardTitle>
-              <CardDescription>Set pricing for different unit types and configurations</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>1 Bedroom Units</Label>
-                    <Input placeholder="$85,000" disabled={!isEditing} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>2 Bedroom Units</Label>
-                    <Input placeholder="$125,000" disabled={!isEditing} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>3 Bedroom Units</Label>
-                    <Input placeholder="$165,000" disabled={!isEditing} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Price per Square Foot</Label>
-                    <Input placeholder="$130" disabled={!isEditing} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Booking Deposit</Label>
-                    <Input placeholder="$5,000" disabled={!isEditing} />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="amenities" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Amenities</CardTitle>
-              <CardDescription>Features and facilities available in this project</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {amenities.map((amenity, index) => (
-                  <div key={index} className="flex items-center gap-2 p-3 border border-border rounded-lg">
-                    <div className="w-2 h-2 bg-accent rounded-full"></div>
-                    <span className="text-foreground">{amenity}</span>
-                  </div>
-                ))}
-              </div>
-              {isEditing && (
-                <div className="mt-4">
-                  <Button variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Amenity
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
+    );
 }

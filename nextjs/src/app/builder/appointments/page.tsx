@@ -22,8 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { checkUserSession, handleApiError } from "@/lib/auth-utils";
+import { appointmentsService } from "@/lib/services/appointments.service";
+import { projectsService } from "@/lib/services/projects.service";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -40,117 +45,112 @@ import {
     Video,
     XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function AppointmentsPage() {
+    const router = useRouter();
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [typeFilter, setTypeFilter] = useState("all");
+    const [projectFilter, setProjectFilter] = useState("all");
     const [date, setDate] = useState<Date>();
+    const [appointments, setAppointments] = useState<any[]>([]);
+    const [projects, setProjects] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        total: 0,
+        confirmed: 0,
+        pending: 0,
+        completed: 0,
+        cancelled: 0,
+    });
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
 
-    // Mock data - replace with real API calls
-    const appointments = [
-        {
-            id: 1,
-            customer: "John Smith",
-            customerId: 101,
-            project: "Sunset Residences",
-            projectId: 1,
-            type: "Site Visit",
-            date: "2024-10-10",
-            time: "10:00 AM",
-            duration: "1 hour",
-            status: "Confirmed",
-            location: "Project Site, Downtown",
-            notes: "First-time visit, interested in 2BHK units",
-            contactNumber: "+1-234-567-8901",
-        },
-        {
-            id: 2,
-            customer: "Sarah Johnson",
-            customerId: 102,
-            project: "Green Valley Homes",
-            projectId: 2,
-            type: "Design Review",
-            date: "2024-10-11",
-            time: "2:00 PM",
-            duration: "45 min",
-            status: "Pending",
-            location: "Office - Meeting Room A",
-            notes: "Review customization options for Unit 204",
-            contactNumber: "+1-234-567-8902",
-        },
-        {
-            id: 3,
-            customer: "Mike Davis",
-            customerId: 103,
-            project: "Urban Towers",
-            projectId: 3,
-            type: "Progress Update",
-            date: "2024-10-12",
-            time: "11:00 AM",
-            duration: "30 min",
-            status: "Confirmed",
-            location: "Project Site",
-            notes: "Show foundation progress",
-            contactNumber: "+1-234-567-8903",
-        },
-        {
-            id: 4,
-            customer: "Emily Brown",
-            customerId: 104,
-            project: "Sunset Residences",
-            projectId: 1,
-            type: "Virtual Tour",
-            date: "2024-10-13",
-            time: "3:00 PM",
-            duration: "45 min",
-            status: "Confirmed",
-            location: "Online - Zoom",
-            notes: "3D model walkthrough",
-            contactNumber: "+1-234-567-8904",
-        },
-        {
-            id: 5,
-            customer: "Robert Wilson",
-            customerId: 105,
-            project: "Green Valley Homes",
-            projectId: 2,
-            type: "Documentation",
-            date: "2024-10-14",
-            time: "4:00 PM",
-            duration: "1 hour",
-            status: "Cancelled",
-            location: "Office",
-            notes: "Contract signing",
-            contactNumber: "+1-234-567-8905",
-        },
-        {
-            id: 6,
-            customer: "Lisa Anderson",
-            customerId: 106,
-            project: "Urban Towers",
-            projectId: 3,
-            type: "Site Visit",
-            date: "2024-10-15",
-            time: "9:00 AM",
-            duration: "1.5 hours",
-            status: "Completed",
-            location: "Project Site",
-            notes: "Interested in penthouse units",
-            contactNumber: "+1-234-567-8906",
-        },
-    ];
+    useEffect(() => {
+        const user = checkUserSession(router);
+        if (!user) return;
+        if (user.user_type !== "builder") {
+            router.push("/login");
+            return;
+        }
+
+        fetchAppointments();
+        fetchProjects();
+    }, [page, statusFilter, typeFilter, projectFilter]);
+
+    const fetchAppointments = async () => {
+        setLoading(true);
+        try {
+            const params: any = {
+                page,
+                limit: 10,
+            };
+
+            if (statusFilter && statusFilter !== "all") {
+                params.status = statusFilter;
+            }
+            if (typeFilter && typeFilter !== "all") {
+                params.type = typeFilter;
+            }
+            if (projectFilter && projectFilter !== "all") {
+                params.project_id = Number(projectFilter);
+            }
+
+            const response = await appointmentsService.getAppointments(params);
+
+            if (response.error) {
+                handleApiError(response.error, router, toast);
+                return;
+            }
+
+            if (response.data) {
+                setAppointments(response.data.appointments || []);
+                setTotal(response.data.total || 0);
+                if (response.data.stats) {
+                    setStats({
+                        total: response.data.stats.total || 0,
+                        confirmed: response.data.stats.confirmed || 0,
+                        pending: response.data.stats.pending || 0,
+                        completed: response.data.stats.completed || 0,
+                        cancelled: response.data.stats.cancelled || 0,
+                    });
+                }
+            }
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to load appointments",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchProjects = async () => {
+        try {
+            const response = await projectsService.getProjects({ limit: 100 });
+            if (response.data) {
+                setProjects(response.data.projects || []);
+            }
+        } catch (error) {
+            console.error("Failed to load projects:", error);
+        }
+    };
 
     const getStatusColor = (status: string) => {
-        switch (status) {
-            case "Confirmed":
+        const statusLower = status?.toLowerCase();
+        switch (statusLower) {
+            case "confirmed":
                 return "default";
-            case "Pending":
+            case "pending":
                 return "secondary";
-            case "Completed":
+            case "completed":
                 return "outline";
-            case "Cancelled":
+            case "cancelled":
                 return "destructive";
             default:
                 return "secondary";
@@ -158,14 +158,15 @@ export default function AppointmentsPage() {
     };
 
     const getStatusIcon = (status: string) => {
-        switch (status) {
-            case "Confirmed":
+        const statusLower = status?.toLowerCase();
+        switch (statusLower) {
+            case "confirmed":
                 return <CheckCircle className="h-4 w-4 text-green-500" />;
-            case "Pending":
+            case "pending":
                 return <Clock className="h-4 w-4 text-yellow-500" />;
-            case "Completed":
+            case "completed":
                 return <CheckCircle className="h-4 w-4 text-gray-500" />;
-            case "Cancelled":
+            case "cancelled":
                 return <XCircle className="h-4 w-4 text-red-500" />;
             default:
                 return null;
@@ -173,34 +174,36 @@ export default function AppointmentsPage() {
     };
 
     const getTypeIcon = (type: string) => {
-        switch (type) {
-            case "Site Visit":
+        const typeLower = type?.toLowerCase();
+        switch (typeLower) {
+            case "site visit":
+            case "site_visit":
                 return <MapPin className="h-4 w-4" />;
-            case "Virtual Tour":
+            case "virtual tour":
+            case "virtual_tour":
                 return <Video className="h-4 w-4" />;
-            case "Design Review":
+            case "design review":
+            case "design_review":
                 return <Eye className="h-4 w-4" />;
             default:
                 return <CalendarIcon className="h-4 w-4" />;
         }
     };
 
-    const filteredAppointments = appointments.filter(appointment => {
-        const matchesSearch =
-            appointment.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            appointment.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            appointment.type.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === "all" || appointment.status.toLowerCase() === statusFilter;
-        const matchesType = typeFilter === "all" || appointment.type.toLowerCase().replace(" ", "-") === typeFilter;
-        return matchesSearch && matchesStatus && matchesType;
-    });
+    const formatDate = (dateString: string) => {
+        try {
+            return format(new Date(dateString), "PPP");
+        } catch {
+            return dateString;
+        }
+    };
 
-    // Group appointments by status for stats
-    const stats = {
-        total: appointments.length,
-        confirmed: appointments.filter(a => a.status === "Confirmed").length,
-        pending: appointments.filter(a => a.status === "Pending").length,
-        completed: appointments.filter(a => a.status === "Completed").length,
+    const formatTime = (dateString: string) => {
+        try {
+            return format(new Date(dateString), "p");
+        } catch {
+            return "";
+        }
     };
 
     return (
@@ -244,9 +247,11 @@ export default function AppointmentsPage() {
                                         <SelectValue placeholder="Select project" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="1">Sunset Residences</SelectItem>
-                                        <SelectItem value="2">Green Valley Homes</SelectItem>
-                                        <SelectItem value="3">Urban Towers</SelectItem>
+                                        {projects.map(project => (
+                                            <SelectItem key={project.id} value={project.id.toString()}>
+                                                {project.project_name}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -331,7 +336,11 @@ export default function AppointmentsPage() {
                         <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.total}</div>
+                        {loading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className="text-2xl font-bold">{stats.total}</div>
+                        )}
                     </CardContent>
                 </Card>
                 <Card>
@@ -340,7 +349,11 @@ export default function AppointmentsPage() {
                         <CheckCircle className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.confirmed}</div>
+                        {loading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className="text-2xl font-bold">{stats.confirmed}</div>
+                        )}
                     </CardContent>
                 </Card>
                 <Card>
@@ -349,7 +362,11 @@ export default function AppointmentsPage() {
                         <Clock className="h-4 w-4 text-yellow-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.pending}</div>
+                        {loading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className="text-2xl font-bold">{stats.pending}</div>
+                        )}
                     </CardContent>
                 </Card>
                 <Card>
@@ -358,7 +375,11 @@ export default function AppointmentsPage() {
                         <CheckCircle className="h-4 w-4 text-gray-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.completed}</div>
+                        {loading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className="text-2xl font-bold">{stats.completed}</div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -376,16 +397,29 @@ export default function AppointmentsPage() {
                                 className="pl-10"
                             />
                         </div>
+                        <Select value={projectFilter} onValueChange={setProjectFilter}>
+                            <SelectTrigger className="w-full sm:w-48">
+                                <SelectValue placeholder="Filter by project" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Projects</SelectItem>
+                                {projects.map(project => (
+                                    <SelectItem key={project.id} value={project.id.toString()}>
+                                        {project.project_name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <Select value={typeFilter} onValueChange={setTypeFilter}>
                             <SelectTrigger className="w-full sm:w-48">
                                 <SelectValue placeholder="Filter by type" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Types</SelectItem>
-                                <SelectItem value="site-visit">Site Visit</SelectItem>
-                                <SelectItem value="virtual-tour">Virtual Tour</SelectItem>
-                                <SelectItem value="design-review">Design Review</SelectItem>
-                                <SelectItem value="progress-update">Progress Update</SelectItem>
+                                <SelectItem value="site_visit">Site Visit</SelectItem>
+                                <SelectItem value="virtual_tour">Virtual Tour</SelectItem>
+                                <SelectItem value="design_review">Design Review</SelectItem>
+                                <SelectItem value="progress_update">Progress Update</SelectItem>
                                 <SelectItem value="documentation">Documentation</SelectItem>
                             </SelectContent>
                         </Select>
@@ -410,94 +444,125 @@ export default function AppointmentsPage() {
                 <CardHeader>
                     <CardTitle>All Appointments</CardTitle>
                     <CardDescription>
-                        {filteredAppointments.length} appointment{filteredAppointments.length !== 1 ? "s" : ""} found
+                        {loading
+                            ? "Loading..."
+                            : `${appointments.length} appointment${appointments.length !== 1 ? "s" : ""} found`}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Customer</TableHead>
-                                <TableHead>Project</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Date & Time</TableHead>
-                                <TableHead>Duration</TableHead>
-                                <TableHead>Location</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredAppointments.map(appointment => (
-                                <TableRow key={appointment.id}>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <User className="h-4 w-4 text-muted-foreground" />
-                                            <div>
-                                                <p className="font-medium">{appointment.customer}</p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {appointment.contactNumber}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                                            {appointment.project}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            {getTypeIcon(appointment.type)}
-                                            {appointment.type}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div>
-                                            <p className="font-medium">{appointment.date}</p>
-                                            <p className="text-sm text-muted-foreground">{appointment.time}</p>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{appointment.duration}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-1 max-w-[150px]">
-                                            <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                            <span className="text-sm truncate">{appointment.location}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            {getStatusIcon(appointment.status)}
-                                            <Badge variant={getStatusColor(appointment.status)}>
-                                                {appointment.status}
-                                            </Badge>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>View Details</DropdownMenuItem>
-                                                <DropdownMenuItem>Reschedule</DropdownMenuItem>
-                                                {appointment.status === "Pending" && (
-                                                    <DropdownMenuItem>Confirm</DropdownMenuItem>
-                                                )}
-                                                {appointment.status !== "Completed" && (
-                                                    <DropdownMenuItem>Mark as Completed</DropdownMenuItem>
-                                                )}
-                                                <DropdownMenuItem className="text-destructive">Cancel</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
+                    {loading ? (
+                        <div className="space-y-4">
+                            {[...Array(5)].map((_, i) => (
+                                <Skeleton key={i} className="h-16 w-full" />
                             ))}
-                        </TableBody>
-                    </Table>
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Project</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Date & Time</TableHead>
+                                    <TableHead>Location</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {appointments.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                            No appointments found
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    appointments.map((appointment: any) => (
+                                        <TableRow key={appointment.id}>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <User className="h-4 w-4 text-muted-foreground" />
+                                                    <div>
+                                                        <p className="font-medium">
+                                                            Customer #{appointment.customer_id}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                                                    <span>Project #{appointment.project_id}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    {getTypeIcon(appointment.appointment_type)}
+                                                    <span className="capitalize">
+                                                        {appointment.appointment_type?.replace(/_/g, " ")}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div>
+                                                    <p className="font-medium">
+                                                        {formatDate(appointment.appointment_date)}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {formatTime(appointment.appointment_date)}
+                                                    </p>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                                                    <span className="text-sm">{appointment.meeting_location}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    {getStatusIcon(appointment.status)}
+                                                    <Badge
+                                                        variant={getStatusColor(appointment.status) as any}
+                                                        className="capitalize"
+                                                    >
+                                                        {appointment.status}
+                                                    </Badge>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem>
+                                                            <Eye className="h-4 w-4 mr-2" />
+                                                            View Details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem>
+                                                            <CalendarIcon className="h-4 w-4 mr-2" />
+                                                            Reschedule
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem>
+                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                            Mark Complete
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-destructive">
+                                                            <XCircle className="h-4 w-4 mr-2" />
+                                                            Cancel
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
                 </CardContent>
             </Card>
         </div>
